@@ -171,6 +171,16 @@
         <span id="currentWind">-- mph</span>
         <span class="label">Wind</span>
       </div>
+      <div class="stat">
+        <span class="emo">🌅</span>
+        <span id="currentSunrise">--:--</span>
+        <span class="label">Sunrise</span>
+      </div>
+      <div class="stat">
+        <span class="emo">🌇</span>
+        <span id="currentSunset">--:--</span>
+        <span class="label">Sunset</span>
+      </div>
     </div>
   </div>
 
@@ -230,6 +240,22 @@
       return WEATHER_CODES[code] || { icon: "🌡️", desc: "Weather" };
     }
 
+    // Night is 9:00 PM to 5:30 AM. Swap the sun for a moon on clear/mainly-clear hours.
+    function isNightTime(d) {
+      var h = d.getHours(), m = d.getMinutes();
+      return h >= 21 || h < 5 || (h === 5 && m < 30);
+    }
+
+    function weatherIconAt(code, d) {
+      if (isNightTime(d) && (code === 0 || code === 1)) return "🌙";
+      return weatherInfo(code).icon;
+    }
+
+    function formatClock(timeStr) {
+      var d = new Date(timeStr);
+      return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    }
+
     var cityRow = document.getElementById("cityRow");
     var statusMsg = document.getElementById("statusMsg");
     var currentCard = document.getElementById("currentCard");
@@ -275,7 +301,7 @@
         + "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code"
         + "&hourly=temperature_2m,weather_code"
         + "&forecast_hours=24"
-        + "&daily=weather_code,temperature_2m_max,temperature_2m_min"
+        + "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset"
         + "&temperature_unit=fahrenheit"
         + "&wind_speed_unit=mph"
         + "&timezone=America%2FDenver"
@@ -287,7 +313,7 @@
           return res.json();
         })
         .then(function (data) {
-          renderCurrent(data.current);
+          renderCurrent(data.current, data.daily);
           renderHourly(data.hourly);
           renderWeek(data.daily);
           statusMsg.textContent = "";
@@ -297,13 +323,16 @@
         });
     }
 
-    function renderCurrent(current) {
+    function renderCurrent(current, daily) {
       var info = weatherInfo(current.weather_code);
-      document.getElementById("currentIcon").textContent = info.icon;
+      var icon = weatherIconAt(current.weather_code, new Date(current.time));
+      document.getElementById("currentIcon").textContent = icon;
       document.getElementById("currentDesc").textContent = info.desc;
       document.getElementById("currentTemp").textContent = Math.round(current.temperature_2m) + "°";
       document.getElementById("currentHumidity").textContent = Math.round(current.relative_humidity_2m) + "%";
       document.getElementById("currentWind").textContent = Math.round(current.wind_speed_10m) + " mph";
+      document.getElementById("currentSunrise").textContent = formatClock(daily.sunrise[0]);
+      document.getElementById("currentSunset").textContent = formatClock(daily.sunset[0]);
       currentCard.style.display = "block";
     }
 
@@ -311,12 +340,12 @@
       var scroll = document.getElementById("hourlyScroll");
       scroll.innerHTML = "";
       for (var i = 0; i < hourly.time.length; i++) {
-        var info = weatherInfo(hourly.weather_code[i]);
+        var icon = weatherIconAt(hourly.weather_code[i], new Date(hourly.time[i]));
         var card = document.createElement("div");
         card.className = "hour-card";
         card.innerHTML =
           '<div class="hour-time">' + hourLabel(hourly.time[i], i) + '</div>' +
-          '<div class="hour-icon">' + info.icon + '</div>' +
+          '<div class="hour-icon">' + icon + '</div>' +
           '<div class="hour-temp">' + Math.round(hourly.temperature_2m[i]) + '°</div>';
         scroll.appendChild(card);
       }
