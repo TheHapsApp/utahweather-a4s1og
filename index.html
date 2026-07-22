@@ -196,12 +196,14 @@
 
   <script>
     var CITIES = [
-      { name: "Provo",       lat: 40.2338, lon: -111.6585 },
-      { name: "Woods Cross", lat: 40.8730, lon: -111.8983 },
-      { name: "Bountiful",   lat: 40.8894, lon: -111.8808 },
-      { name: "Salt Lake",   lat: 40.7608, lon: -111.8910 },
-      { name: "Layton",      lat: 41.0602, lon: -111.9711 },
-      { name: "Orem",        lat: 40.2969, lon: -111.6946 }
+      { name: "Provo",           lat: 40.2338, lon: -111.6585 },
+      { name: "Woods Cross",     lat: 40.8730, lon: -111.8983 },
+      { name: "Bountiful",       lat: 40.8894, lon: -111.8808 },
+      { name: "North Salt Lake", lat: 40.8496, lon: -111.9066 },
+      { name: "Salt Lake",       lat: 40.7608, lon: -111.8910 },
+      { name: "South Salt Lake", lat: 40.7197, lon: -111.8894 },
+      { name: "Layton",          lat: 41.0602, lon: -111.9711 },
+      { name: "Orem",            lat: 40.2969, lon: -111.6946 }
     ];
 
     // WMO weather codes -> emoji + short description
@@ -387,7 +389,7 @@
       weekSection.style.display = "block";
     }
 
-    selectCity(3); // default to Salt Lake
+    selectCity(4); // default to Salt Lake
   </script>
 </body>
 </html>
