@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Keep this page off Google so it stays our secret -->
+  <meta name="robots" content="noindex, nofollow">
+  <title>Ben's Utah Weather</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9B%85%3C/text%3E%3C/svg%3E">
+  <style>
+    :root {
+      --sky1: #4facfe;
+      --sky2: #00c6fb;
+      --sky3: #a1c4fd;
+      --sky4: #6dd5fa;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-user-select: none; user-select: none; }
+    html, body { height: 100%; }
+    body {
+      font-family: "Comic Sans MS", "Trebuchet MS", system-ui, sans-serif;
+      min-height: 100vh;
+      color: #fff;
+      text-align: center;
+      background: linear-gradient(120deg, var(--sky1), var(--sky2), var(--sky4), var(--sky3));
+      background-size: 400% 400%;
+      animation: flow 16s ease infinite;
+      padding: 26px 16px 60px;
+    }
+    @keyframes flow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    h1 {
+      font-size: clamp(1.7rem, 7vw, 2.6rem);
+      text-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+    }
+    .sub {
+      font-size: clamp(0.9rem, 3.2vw, 1.1rem);
+      margin: 8px 0 24px;
+      text-shadow: 1px 1px 0 rgba(0,0,0,0.15);
+    }
+
+    /* ---- City picker ---- */
+    .city-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      max-width: 560px;
+      margin: 0 auto 26px;
+    }
+    .city-btn {
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: bold;
+      color: #fff;
+      background: rgba(255,255,255,0.2);
+      border: 3px solid #fff;
+      border-radius: 999px;
+      padding: 8px 16px;
+      cursor: pointer;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+    }
+    .city-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.2); }
+    .city-btn.active { background: rgba(255,255,255,0.55); color: #1a4a7a; }
+
+    .status { font-size: 1rem; margin: 20px 0; opacity: 0.9; }
+
+    /* ---- Current conditions card ---- */
+    .current-card {
+      max-width: 420px;
+      margin: 0 auto 30px;
+      background: rgba(255,255,255,0.22);
+      border: 4px solid #fff;
+      border-radius: 26px;
+      padding: 22px 20px;
+      box-shadow: 0 8px 0 rgba(0,0,0,0.2);
+    }
+    .current-icon { font-size: clamp(3.5rem, 14vw, 5rem); }
+    .current-temp {
+      font-size: clamp(2.2rem, 10vw, 3.4rem);
+      font-weight: bold;
+      text-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+    }
+    .current-desc { font-size: 1.1rem; margin-bottom: 14px; }
+    .stat-row {
+      display: flex;
+      justify-content: center;
+      gap: 22px;
+      flex-wrap: wrap;
+      font-size: 1rem;
+      font-weight: bold;
+    }
+    .stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .stat .emo { font-size: 1.5rem; }
+    .stat .label { font-size: 0.75rem; font-weight: normal; opacity: 0.85; }
+
+    /* ---- Week forecast ---- */
+    .week-title {
+      font-size: clamp(1.2rem, 5vw, 1.5rem);
+      margin-bottom: 16px;
+      text-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+    }
+    .week-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+      gap: 12px;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .day-card {
+      background: rgba(255,255,255,0.2);
+      border: 3px solid #fff;
+      border-radius: 18px;
+      padding: 14px 8px;
+    }
+    .day-name { font-weight: bold; font-size: 0.9rem; margin-bottom: 6px; }
+    .day-icon { font-size: 1.8rem; margin-bottom: 6px; }
+    .day-hi { font-weight: bold; font-size: 1rem; }
+    .day-lo { font-size: 0.85rem; opacity: 0.85; }
+  </style>
+</head>
+<body>
+  <h1>⛅ Ben's Utah Weather ⛅</h1>
+  <p class="sub">Pick a city to see the weather!</p>
+
+  <div class="city-row" id="cityRow"></div>
+
+  <div id="statusMsg" class="status"></div>
+
+  <div class="current-card" id="currentCard" style="display:none;">
+    <div class="current-icon" id="currentIcon">☀️</div>
+    <div class="current-temp" id="currentTemp">--°</div>
+    <div class="current-desc" id="currentDesc">-</div>
+    <div class="stat-row">
+      <div class="stat">
+        <span class="emo">💧</span>
+        <span id="currentHumidity">--%</span>
+        <span class="label">Humidity</span>
+      </div>
+      <div class="stat">
+        <span class="emo">💨</span>
+        <span id="currentWind">-- mph</span>
+        <span class="label">Wind</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="weekSection" style="display:none;">
+    <div class="week-title">📅 This Week</div>
+    <div class="week-grid" id="weekGrid"></div>
+  </div>
+
+  <script>
+    var CITIES = [
+      { name: "Provo",       lat: 40.2338, lon: -111.6585 },
+      { name: "Woods Cross", lat: 40.8730, lon: -111.8983 },
+      { name: "Bountiful",   lat: 40.8894, lon: -111.8808 },
+      { name: "Salt Lake",   lat: 40.7608, lon: -111.8910 },
+      { name: "Layton",      lat: 41.0602, lon: -111.9711 },
+      { name: "Orem",        lat: 40.2969, lon: -111.6946 }
+    ];
+
+    // WMO weather codes -> emoji + short description
+    var WEATHER_CODES = {
+      0:  { icon: "☀️", desc: "Clear sky" },
+      1:  { icon: "🌤️", desc: "Mainly clear" },
+      2:  { icon: "⛅", desc: "Partly cloudy" },
+      3:  { icon: "☁️", desc: "Overcast" },
+      45: { icon: "🌫️", desc: "Foggy" },
+      48: { icon: "🌫️", desc: "Foggy" },
+      51: { icon: "🌦️", desc: "Light drizzle" },
+      53: { icon: "🌦️", desc: "Drizzle" },
+      55: { icon: "🌦️", desc: "Heavy drizzle" },
+      56: { icon: "🌧️", desc: "Freezing drizzle" },
+      57: { icon: "🌧️", desc: "Freezing drizzle" },
+      61: { icon: "🌧️", desc: "Light rain" },
+      63: { icon: "🌧️", desc: "Rain" },
+      65: { icon: "🌧️", desc: "Heavy rain" },
+      66: { icon: "🌧️", desc: "Freezing rain" },
+      67: { icon: "🌧️", desc: "Freezing rain" },
+      71: { icon: "🌨️", desc: "Light snow" },
+      73: { icon: "❄️", desc: "Snow" },
+      75: { icon: "❄️", desc: "Heavy snow" },
+      77: { icon: "❄️", desc: "Snow grains" },
+      80: { icon: "🌦️", desc: "Rain showers" },
+      81: { icon: "🌧️", desc: "Rain showers" },
+      82: { icon: "⛈️", desc: "Violent showers" },
+      85: { icon: "🌨️", desc: "Snow showers" },
+      86: { icon: "❄️", desc: "Snow showers" },
+      95: { icon: "⛈️", desc: "Thunderstorm" },
+      96: { icon: "⛈️", desc: "Thunderstorm + hail" },
+      99: { icon: "⛈️", desc: "Thunderstorm + hail" }
+    };
+
+    function weatherInfo(code) {
+      return WEATHER_CODES[code] || { icon: "🌡️", desc: "Weather" };
+    }
+
+    var cityRow = document.getElementById("cityRow");
+    var statusMsg = document.getElementById("statusMsg");
+    var currentCard = document.getElementById("currentCard");
+    var weekSection = document.getElementById("weekSection");
+
+    CITIES.forEach(function (city, i) {
+      var btn = document.createElement("button");
+      btn.className = "city-btn";
+      btn.textContent = city.name;
+      btn.addEventListener("click", function () { selectCity(i); });
+      cityRow.appendChild(btn);
+    });
+
+    function setActiveCityButton(index) {
+      var buttons = cityRow.querySelectorAll(".city-btn");
+      buttons.forEach(function (b, i) { b.classList.toggle("active", i === index); });
+    }
+
+    function dayLabel(dateStr, index) {
+      if (index === 0) return "Today";
+      var d = new Date(dateStr + "T00:00:00");
+      return d.toLocaleDateString(undefined, { weekday: "short" });
+    }
+
+    function selectCity(index) {
+      setActiveCityButton(index);
+      var city = CITIES[index];
+      currentCard.style.display = "none";
+      weekSection.style.display = "none";
+      statusMsg.textContent = "Loading weather for " + city.name + "... ☁️";
+
+      var url = "https://api.open-meteo.com/v1/forecast"
+        + "?latitude=" + city.lat
+        + "&longitude=" + city.lon
+        + "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code"
+        + "&daily=weather_code,temperature_2m_max,temperature_2m_min"
+        + "&temperature_unit=fahrenheit"
+        + "&wind_speed_unit=mph"
+        + "&timezone=America%2FDenver"
+        + "&forecast_days=7";
+
+      fetch(url)
+        .then(function (res) {
+          if (!res.ok) throw new Error("Weather request failed");
+          return res.json();
+        })
+        .then(function (data) {
+          renderCurrent(data.current);
+          renderWeek(data.daily);
+          statusMsg.textContent = "";
+        })
+        .catch(function () {
+          statusMsg.textContent = "Couldn't load the weather right now. Try again in a bit! 🌧️";
+        });
+    }
+
+    function renderCurrent(current) {
+      var info = weatherInfo(current.weather_code);
+      document.getElementById("currentIcon").textContent = info.icon;
+      document.getElementById("currentDesc").textContent = info.desc;
+      document.getElementById("currentTemp").textContent = Math.round(current.temperature_2m) + "°";
+      document.getElementById("currentHumidity").textContent = Math.round(current.relative_humidity_2m) + "%";
+      document.getElementById("currentWind").textContent = Math.round(current.wind_speed_10m) + " mph";
+      currentCard.style.display = "block";
+    }
+
+    function renderWeek(daily) {
+      var grid = document.getElementById("weekGrid");
+      grid.innerHTML = "";
+      for (var i = 0; i < daily.time.length; i++) {
+        var info = weatherInfo(daily.weather_code[i]);
+        var card = document.createElement("div");
+        card.className = "day-card";
+        card.innerHTML =
+          '<div class="day-name">' + dayLabel(daily.time[i], i) + '</div>' +
+          '<div class="day-icon">' + info.icon + '</div>' +
+          '<div class="day-hi">' + Math.round(daily.temperature_2m_max[i]) + '°</div>' +
+          '<div class="day-lo">' + Math.round(daily.temperature_2m_min[i]) + '°</div>';
+        grid.appendChild(card);
+      }
+      weekSection.style.display = "block";
+    }
+
+    selectCity(3); // default to Salt Lake
+  </script>
+</body>
+</html>
