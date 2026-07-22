@@ -96,6 +96,33 @@
     .stat .emo { font-size: 1.5rem; }
     .stat .label { font-size: 0.75rem; font-weight: normal; opacity: 0.85; }
 
+    /* ---- Hourly forecast (next 24 hours) ---- */
+    .hourly-title {
+      font-size: clamp(1.1rem, 4.5vw, 1.4rem);
+      margin-bottom: 12px;
+      text-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+    }
+    .hourly-scroll {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      max-width: 700px;
+      margin: 0 auto 34px;
+      padding: 4px 4px 10px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .hour-card {
+      flex: 0 0 auto;
+      background: rgba(255,255,255,0.2);
+      border: 3px solid #fff;
+      border-radius: 16px;
+      padding: 10px 12px;
+      min-width: 66px;
+    }
+    .hour-time { font-weight: bold; font-size: 0.8rem; margin-bottom: 6px; }
+    .hour-icon { font-size: 1.5rem; margin-bottom: 6px; }
+    .hour-temp { font-weight: bold; font-size: 0.95rem; }
+
     /* ---- Week forecast ---- */
     .week-title {
       font-size: clamp(1.2rem, 5vw, 1.5rem);
@@ -145,6 +172,11 @@
         <span class="label">Wind</span>
       </div>
     </div>
+  </div>
+
+  <div id="hourlySection" style="display:none;">
+    <div class="hourly-title">🕐 Today, Hour by Hour</div>
+    <div class="hourly-scroll" id="hourlyScroll"></div>
   </div>
 
   <div id="weekSection" style="display:none;">
@@ -201,6 +233,7 @@
     var cityRow = document.getElementById("cityRow");
     var statusMsg = document.getElementById("statusMsg");
     var currentCard = document.getElementById("currentCard");
+    var hourlySection = document.getElementById("hourlySection");
     var weekSection = document.getElementById("weekSection");
 
     CITIES.forEach(function (city, i) {
@@ -222,10 +255,17 @@
       return d.toLocaleDateString(undefined, { weekday: "short" });
     }
 
+    function hourLabel(timeStr, index) {
+      if (index === 0) return "Now";
+      var d = new Date(timeStr);
+      return d.toLocaleTimeString(undefined, { hour: "numeric" });
+    }
+
     function selectCity(index) {
       setActiveCityButton(index);
       var city = CITIES[index];
       currentCard.style.display = "none";
+      hourlySection.style.display = "none";
       weekSection.style.display = "none";
       statusMsg.textContent = "Loading weather for " + city.name + "... ☁️";
 
@@ -233,6 +273,8 @@
         + "?latitude=" + city.lat
         + "&longitude=" + city.lon
         + "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code"
+        + "&hourly=temperature_2m,weather_code"
+        + "&forecast_hours=24"
         + "&daily=weather_code,temperature_2m_max,temperature_2m_min"
         + "&temperature_unit=fahrenheit"
         + "&wind_speed_unit=mph"
@@ -246,6 +288,7 @@
         })
         .then(function (data) {
           renderCurrent(data.current);
+          renderHourly(data.hourly);
           renderWeek(data.daily);
           statusMsg.textContent = "";
         })
@@ -262,6 +305,22 @@
       document.getElementById("currentHumidity").textContent = Math.round(current.relative_humidity_2m) + "%";
       document.getElementById("currentWind").textContent = Math.round(current.wind_speed_10m) + " mph";
       currentCard.style.display = "block";
+    }
+
+    function renderHourly(hourly) {
+      var scroll = document.getElementById("hourlyScroll");
+      scroll.innerHTML = "";
+      for (var i = 0; i < hourly.time.length; i++) {
+        var info = weatherInfo(hourly.weather_code[i]);
+        var card = document.createElement("div");
+        card.className = "hour-card";
+        card.innerHTML =
+          '<div class="hour-time">' + hourLabel(hourly.time[i], i) + '</div>' +
+          '<div class="hour-icon">' + info.icon + '</div>' +
+          '<div class="hour-temp">' + Math.round(hourly.temperature_2m[i]) + '°</div>';
+        scroll.appendChild(card);
+      }
+      hourlySection.style.display = "block";
     }
 
     function renderWeek(daily) {
