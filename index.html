@@ -247,7 +247,10 @@
     }
 
     function weatherIconAt(code, d) {
-      if (isNightTime(d) && (code === 0 || code === 1)) return "🌙";
+      if (isNightTime(d)) {
+        if (code === 0 || code === 1) return "🌙";
+        if (code === 2) return "🌙☁️"; // partly moony!
+      }
       return weatherInfo(code).icon;
     }
 
