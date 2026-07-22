@@ -314,7 +314,7 @@
         })
         .then(function (data) {
           renderCurrent(data.current, data.daily);
-          renderHourly(data.hourly);
+          renderHourly(data.hourly, data.daily);
           renderWeek(data.daily);
           statusMsg.textContent = "";
         })
@@ -336,11 +336,26 @@
       currentCard.style.display = "block";
     }
 
-    function renderHourly(hourly) {
+    // Which hour block (floored to the hour) a sunrise/sunset moment falls in.
+    function hourBucket(timeStr) {
+      var d = new Date(timeStr);
+      d.setMinutes(0, 0, 0);
+      return d.getTime();
+    }
+
+    function renderHourly(hourly, daily) {
+      var sunriseBuckets = daily.sunrise.map(hourBucket);
+      var sunsetBuckets = daily.sunset.map(hourBucket);
+
       var scroll = document.getElementById("hourlyScroll");
       scroll.innerHTML = "";
       for (var i = 0; i < hourly.time.length; i++) {
-        var icon = weatherIconAt(hourly.weather_code[i], new Date(hourly.time[i]));
+        var bucket = new Date(hourly.time[i]).getTime();
+        var icon;
+        if (sunriseBuckets.indexOf(bucket) !== -1) icon = "🌅";
+        else if (sunsetBuckets.indexOf(bucket) !== -1) icon = "🌇";
+        else icon = weatherIconAt(hourly.weather_code[i], new Date(hourly.time[i]));
+
         var card = document.createElement("div");
         card.className = "hour-card";
         card.innerHTML =
