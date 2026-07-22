@@ -146,6 +146,72 @@
     .day-icon { font-size: 1.8rem; margin-bottom: 6px; }
     .day-hi { font-weight: bold; font-size: 1rem; }
     .day-lo { font-size: 0.85rem; opacity: 0.85; }
+    .day-card { cursor: pointer; transition: transform 0.1s ease, background 0.1s ease; }
+    .day-card:active { transform: translateY(2px); background: rgba(255,255,255,0.32); }
+
+    /* ---- Day detail modal ---- */
+    .day-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,40,70,0.55);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+    .day-modal-overlay.show { display: flex; }
+    .day-modal-card {
+      background: rgba(60,140,200,0.92);
+      border: 4px solid #fff;
+      border-radius: 26px;
+      padding: 26px 24px;
+      max-width: 340px;
+      width: 100%;
+      box-shadow: 0 8px 0 rgba(0,0,0,0.25);
+      animation: dayModalPop 0.25s ease;
+    }
+    @keyframes dayModalPop {
+      0%   { transform: scale(0.7); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .day-modal-title {
+      font-size: 1.3rem;
+      font-weight: bold;
+      margin-bottom: 4px;
+      text-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+    }
+    .day-modal-date { font-size: 0.9rem; opacity: 0.85; margin-bottom: 14px; }
+    .day-modal-icon { font-size: 3.4rem; margin-bottom: 6px; }
+    .day-modal-desc { font-size: 1.05rem; margin-bottom: 14px; }
+    .day-modal-temps {
+      font-size: clamp(1.6rem, 7vw, 2.1rem);
+      font-weight: bold;
+      margin-bottom: 16px;
+      text-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+    }
+    .day-modal-temps .lo { opacity: 0.7; font-size: 0.75em; }
+    .day-modal-stats {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      flex-wrap: wrap;
+      font-size: 0.95rem;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    .day-modal-close {
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: bold;
+      color: #fff;
+      background: rgba(255,255,255,0.2);
+      border: 3px solid #fff;
+      border-radius: 999px;
+      padding: 10px 26px;
+      cursor: pointer;
+    }
+    .day-modal-close:active { transform: translateY(2px); }
   </style>
 </head>
 <body>
@@ -190,8 +256,39 @@
   </div>
 
   <div id="weekSection" style="display:none;">
-    <div class="week-title">📅 This Week</div>
+    <div class="week-title">📅 This Week (tap a day!)</div>
     <div class="week-grid" id="weekGrid"></div>
+  </div>
+
+  <div class="day-modal-overlay" id="dayModalOverlay">
+    <div class="day-modal-card">
+      <div class="day-modal-title" id="dayModalTitle">Day</div>
+      <div class="day-modal-date" id="dayModalDate"></div>
+      <div class="day-modal-icon" id="dayModalIcon">☀️</div>
+      <div class="day-modal-desc" id="dayModalDesc"></div>
+      <div class="day-modal-temps">
+        <span id="dayModalHi">--°</span>
+        <span class="lo"> / <span id="dayModalLo">--°</span></span>
+      </div>
+      <div class="day-modal-stats">
+        <div class="stat">
+          <span class="emo">💨</span>
+          <span id="dayModalWind">-- mph</span>
+          <span class="label">Wind</span>
+        </div>
+        <div class="stat">
+          <span class="emo">🌅</span>
+          <span id="dayModalSunrise">--:--</span>
+          <span class="label">Sunrise</span>
+        </div>
+        <div class="stat">
+          <span class="emo">🌇</span>
+          <span id="dayModalSunset">--:--</span>
+          <span class="label">Sunset</span>
+        </div>
+      </div>
+      <button class="day-modal-close" id="dayModalCloseBtn">✖️ Close</button>
+    </div>
   </div>
 
   <script>
@@ -286,6 +383,17 @@
       return d.toLocaleDateString(undefined, { weekday: "short" });
     }
 
+    function fullDayLabel(dateStr, index) {
+      var d = new Date(dateStr + "T00:00:00");
+      var weekday = d.toLocaleDateString(undefined, { weekday: "long" });
+      return index === 0 ? "Today (" + weekday + ")" : weekday;
+    }
+
+    function fullDateLabel(dateStr) {
+      var d = new Date(dateStr + "T00:00:00");
+      return d.toLocaleDateString(undefined, { month: "long", day: "numeric" });
+    }
+
     function hourLabel(timeStr, index) {
       if (index === 0) return "Now";
       var d = new Date(timeStr);
@@ -306,7 +414,7 @@
         + "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code"
         + "&hourly=temperature_2m,weather_code"
         + "&forecast_hours=24"
-        + "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset"
+        + "&daily=weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,sunrise,sunset"
         + "&temperature_unit=fahrenheit"
         + "&wind_speed_unit=mph"
         + "&timezone=America%2FDenver"
@@ -384,10 +492,38 @@
           '<div class="day-icon">' + info.icon + '</div>' +
           '<div class="day-hi">' + Math.round(daily.temperature_2m_max[i]) + '°</div>' +
           '<div class="day-lo">' + Math.round(daily.temperature_2m_min[i]) + '°</div>';
+        card.addEventListener("click", (function (dailyRef, index) {
+          return function () { openDayModal(dailyRef, index); };
+        })(daily, i));
         grid.appendChild(card);
       }
       weekSection.style.display = "block";
     }
+
+    var dayModalOverlay = document.getElementById("dayModalOverlay");
+
+    function openDayModal(daily, index) {
+      var info = weatherInfo(daily.weather_code[index]);
+      document.getElementById("dayModalTitle").textContent = fullDayLabel(daily.time[index], index);
+      document.getElementById("dayModalDate").textContent = fullDateLabel(daily.time[index]);
+      document.getElementById("dayModalIcon").textContent = info.icon;
+      document.getElementById("dayModalDesc").textContent = info.desc;
+      document.getElementById("dayModalHi").textContent = Math.round(daily.temperature_2m_max[index]) + "°";
+      document.getElementById("dayModalLo").textContent = Math.round(daily.temperature_2m_min[index]) + "°";
+      document.getElementById("dayModalWind").textContent = Math.round(daily.wind_speed_10m_max[index]) + " mph";
+      document.getElementById("dayModalSunrise").textContent = formatClock(daily.sunrise[index]);
+      document.getElementById("dayModalSunset").textContent = formatClock(daily.sunset[index]);
+      dayModalOverlay.classList.add("show");
+    }
+
+    function closeDayModal() {
+      dayModalOverlay.classList.remove("show");
+    }
+
+    document.getElementById("dayModalCloseBtn").addEventListener("click", closeDayModal);
+    dayModalOverlay.addEventListener("click", function (e) {
+      if (e.target === dayModalOverlay) closeDayModal();
+    });
 
     selectCity(4); // default to Salt Lake
   </script>
